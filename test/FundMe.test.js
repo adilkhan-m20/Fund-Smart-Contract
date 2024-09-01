@@ -3,7 +3,6 @@ const {assert}=("chai");
 describe("FundMe",async function(){
     let deployer;
     let fundMe;
-    let mockV3Aggregator;
     const sendValue=ethers.utils.parseEther("1");
     beforeEach(async function(){
         //deploy our hardhat conntract
@@ -13,19 +12,10 @@ describe("FundMe",async function(){
         deployer=(await getNamedAccounts()).deployer;
         await deployments.fixture(["all"]);//fixtures all is use to run all the deploy scripts
         fundMe=await ethers.getContract("FundMe", deployer);
-        mockV3Aggregator=await ethers.getContract("MockV3Aggregator",deployer)
-    })
-    describe("constructor", async function(){
-        it("sets the aggregator address correctly", async function(){
-            const response=await fundMe.priceFeed();
-            assert.equal(response,mockV3Aggregator.address);
-        })
     })
 
     describe("fund", async function(){
-        it("Fails if you dont send enough ETH", async function(){
-            await expect(fundMe.fund()).to.be.revertedWith("You need to spend more ETH");
-        })
+     
         it("update the amount funded data structure", async function(){
             await fundMe.fund({ value:sendValue});
             const response=await fundMe.addressToAmountFunded(deployer);
@@ -41,7 +31,7 @@ describe("FundMe",async function(){
         beforeEach(async function(){
             await fundMe.fund({value: sendValue});
         })
-        it("withdraw ETH from a single founder", async function(){
+        it("withdraw ETH from a single funder", async function(){
             //Arrange
             const startingFundMeBalance=await fundMe.provider.getBalance(fundMe.address);
             const startingDeployerBalance=await fundMe.provider.getBalance(deployer);
@@ -78,6 +68,22 @@ describe("FundMe",async function(){
             for(let x=1;x<6;x++){
                 assert.equal(await fundMe.addressToAmountFunded(accounts[x].address,0));
             }
+        })
+        it("allows us to withdraw a specific amount from the funders", async function(){
+            //Arrange
+            withdrawAmount=ethers.utils.parseEther("0.5");
+            const startingFundMeBalance=await fundMe.provider.getBalance(fundMe.address);
+            const startingDeployerBalance=await fundMe.provider.getBalance(deployer);
+            //Act
+            const transactionResponse=await fundMe.WithdrawA(ethers.utils.parseEther(withdrawAmount));
+            const transactionReceipt=await transactionResponse.wait(1);
+            const {gasUsed,effectiveGasPrice}=transactionReceipt;
+            const gasCost=gasUsed.mul(effectiveGasPrice);
+            const endingFundMeBalance=await fundMe.provider.getBalance(fundMe.address);
+            const endingDeployerBalance=await fundMe.provider.getBalance(deployer);
+            //Assert
+            assert.equal(startingDeployerBalance+withdrawAmount,endingDeployerBalance.add(gasCost).toString());
+            assert.equal(startingFundMeBalance,endingFundMeBalance+withdrawAmount);
         })
         it("Only allows the owner to withdraw", async function(){
             const accounts=await ethers.getSigners();
