@@ -1,9 +1,4 @@
-/*async function deployFunc(hre){
-    console.log("Hi");
-}
-module.exports.default=deployFunc*/
-//const helperConfig=require("../helper-hardhat-config");
-//const networkConfig=helperConfig.networkConfig;
+
 const {netwrokConfig} = require("../helper-hardhat-config");
 const {network} = require ("hardhat");
 const {verify} = require ("../utils/verify");
